@@ -1,0 +1,191 @@
+library---
+title: "Mortality rates in London"
+author: "Veronica Tuffrey"
+date: "05/10/2021"
+output:
+  html_document: default
+  pdf_document: default
+always_allow_html: yes
+---
+
+### **Data source**    
+Mortality data were downloaded from [the Public Health England Outcomes Framework website](https://fingertips.phe.org.uk/profile/mortality-profile/data). 
+These data relate to *premature mortality* - deaths under age 75 for all causes combined, and to *preventable mortality* - where all or most deaths could potentially be prevented through public health interventions.
+
+All rates are age-standardised and data have been smoothed over three years.
+
+
+```{r setup, include=FALSE}
+
+# This file is an edited version of a demo doc created by Marta Lapsley
+
+# First load required packages. The ones listed here are the ones needed to run Marta's code.
+
+library(tidyverse)
+library(gglaplot)
+library(scales)
+library(readxl)
+library(knitr)
+library(sf)
+library(sp)
+library(kableExtra)
+library(magick)
+library(forcats)
+
+
+# Import the data.
+
+# Here I use
+# - <75 mortality data from Public Health England Outcomes Framework
+# https://fingertips.phe.org.uk/profile/mortality-profile/data
+# - London borough boundary data for producing maps
+
+
+# Read in data for the bar chart:
+currentMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/EnglandRegions_2018mortality_ordered.csv")
+currentMortality$Region <- factor(currentMortality$Region, 
+                                  levels = currentMortality$Region[order(currentMortality$ValOrder)])
+currentMortality$Colour <- factor(currentMortality$Colour, levels = c(1,2,3), labels = c ("Rest of England", "London", "England"))
+#currentMortality$characterRegion <- as.character(currentMortality$RegionCode)
+
+
+# Read in data for the line plots:
+trendsMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/EnglandRegions_mortality_trends.csv")
+# get the data just for London
+londonTrends <- filter(trendsMortality, Region == "London region")
+
+
+# Read in data for the premature mortality map:
+LASMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/londonLAs_mortality_2018.csv")
+
+# Read in data for the preventable CVD mortality map:
+LAsCVDMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/londonLAs_PreventableCVDmortality_2018.csv")
+
+# Read in data for the preventable cancer mortality map:
+LAsCancerMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/londonLAs_PreventableCancerMortality_2018.csv")
+
+# Read in data for the preventable respiratory disease mortality map:
+LAsRDMortality <- read_csv("C:/Mortality_analysis/New_Mortality_Analysis/londonLAs_PreventableRDMortality_2018.csv")
+
+# Import borough boundaries
+borough_boundaries<-
+  st_read("2011_census_london_boroughs/London_Borough_Excluding_MHW.shp")
+
+# Disable scientific notation
+options(scipen=999)
+
+```
+
+### 1) **Comparing premature mortality in London with other regions of the UK**    
+The plot below shows that compared to the overall rate for England (first bar), London's premature mortality rate (fifth bar) is below average. The highest rates are in the North-East and North-West regions.
+
+```{r, echo=FALSE}
+my_first_barplot <- ggplot(currentMortality, aes(x = Region, y = Value, fill=Colour)) +
+  ggla_horizbar(show.legend = F) +
+  theme_gla() +
+  ggtitle("<75y. mortality (per 100,000) by region of England, 2018")
+print(my_first_barplot)
+
+# need to work out how to change order of regions!
+```
+
+
+### 2) **Examining premature mortality trend in London over the last two decades**
+The plot below shows that premature mortality in London has decreased steadily over the last two decades.
+
+```{r, echo=FALSE}
+my_first_lineplot <- ggplot(londonTrends, aes(x = Year, y = Value)) +
+  ggla_line() +
+  xlim(2000, 2020) +
+  ylim(250, 540) +
+  theme_gla() +
+  ggtitle("<75y mortality/100,000, London, 2002-18")
+print(my_first_lineplot)
+```
+
+
+
+### 3) **Comparing the time-trend in premature mortality for London with other regions in England** 
+The plot below shows London (green line) has had a greater decrease in premature mortality than the other English regions.
+
+
+```{r, echo=FALSE}
+my_second_lineplot <- ggplot(trendsMortality, aes(x=Year, y = Value, group = Region, colour=Region)) + 
+  ggla_line() +
+  xlim(2000, 2020) +
+  ylim(250, 540) +
+  theme_gla() +
+  theme(plot.title = element_text(size = 16, hjust = 0.5)) +
+  ggtitle("<75y mortality/100,000 by region of England, 2002-18")
+print(my_second_lineplot)
+```
+
+### 4) **Variation in premature mortality by London borough in 2018** 
+The borough of Barking and Dagenham has the highest premature mortality rate at over 400 per 100,000, almost twice the lowest borough value (City of London).
+
+
+```{r, echo=FALSE}
+mortality <- LASMortality %>% 
+  left_join(borough_boundaries, by=c("Area Code"="GSS_CODE"))
+
+ggplot(mortality, aes(geometry=geometry, fill=Value))+
+      ggla_sf()+
+      theme_gla()+
+      theme(plot.title = element_text(size = 16, hjust = 0.5))+
+      scale_fill_gradient(low="slategray1",
+                          high="royalblue4")+
+      theme(legend.position="right") +
+  labs(title= "<75y mortality/100,000, London, 2018" )
+```
+
+
+### 5) **Variation in preventable mortality by borough in 2018** 
+For CVD and respiratory disease, the borough of Barking and Dagenham has the highest preventable mortality rates, and Kensington and Chelsea the lowest. For cancer, Islington has the highest rate, and Harrow the lowest.
+
+
+```{r, echo=FALSE}
+
+
+CVDmortality <- LAsCVDMortality %>% 
+  left_join(borough_boundaries, by=c("Area Code"="GSS_CODE"))
+
+ggplot(CVDmortality, aes(geometry=geometry, fill=Value))+
+      ggla_sf()+
+      theme_gla()+
+      theme(plot.title = element_text(size = 16, hjust = 0.5))+
+      scale_fill_gradient(low="slategray1",
+                          high="royalblue4")+
+      theme(legend.position="right") +
+  labs(title= "<75y mortality/100,000 from cardio-vascular disease\nconsidered preventable, London, 2018" )
+
+CancerMortality <- LAsCancerMortality %>% 
+  left_join(borough_boundaries, by=c("Area Code"="GSS_CODE"))
+
+ggplot(CancerMortality, aes(geometry=geometry, fill=Value))+
+      ggla_sf()+
+      theme_gla()+
+      theme(plot.title = element_text(size = 16, hjust = 0.5))+
+      scale_fill_gradient(low="slategray1",
+                          high="royalblue4")+
+      theme(legend.position="right") +
+  labs(title= "<75y mortality/100,000 from cancer considered\npreventable, London, 2018" )
+
+RDmortality <- LAsRDMortality %>% 
+  left_join(borough_boundaries, by=c("Area Code"="GSS_CODE"))
+
+ggplot(RDmortality, aes(geometry=geometry, fill=Value))+
+      ggla_sf()+
+      theme_gla() +
+      theme(plot.title = element_text(size = 16, hjust = 0.5))+
+      scale_fill_gradient(low="slategray1",
+                          high="royalblue4")+
+      theme(legend.position="right") +
+  labs(title= "<75y mortality/100,000 from respiratory disease\nconsidered preventable, London, 2018" )
+
+
+```
+
+
+$~$
+
+

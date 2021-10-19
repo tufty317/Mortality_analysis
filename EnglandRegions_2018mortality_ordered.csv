@@ -1,0 +1,11 @@
+﻿AreaCode,Region,RegionCode,Year,Value,ValOrder,Colour
+E12000001,North East region,1,2018,391.9328419,1,1
+E12000002,North West region,2,2018,382.7383568,2,1
+E12000003,Yorkshire and the Humber region,3,2018,361.1953952,3,1
+E12000005,West Midlands region,5,2018,349.0396225,4,1
+E12000004,East Midlands region,4,2018,331.8625152,5,1
+E12000007,London region,7,2018,298.7566602,6,2
+E12000006,East of England region,6,2018,297.6385668,7,1
+E12000009,South West region,9,2018,294.0702731,8,1
+E12000008,South East region,8,2018,288.3754499,9,1
+E92000001,England,99,2018,325.9710916,10,3
